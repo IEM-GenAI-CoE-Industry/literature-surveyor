@@ -391,6 +391,67 @@
   word-wrap: break-word;
 }
 
+.content-text p {
+  margin-bottom: 1rem;
+}
+
+.content-text h1,
+.content-text h2,
+.content-text h3,
+.content-text h4,
+.content-text h5,
+.content-text h6 {
+  margin: 1.5rem 0 0.75rem;
+  font-weight: 600;
+  color: #2d2d2d;
+}
+
+.content-text ul,
+.content-text ol {
+  margin: 0 0 1.25rem 1.5rem;
+  padding-left: 1.25rem;
+}
+
+.content-text li {
+  margin-bottom: 0.5rem;
+}
+
+.content-text a {
+  color: #4b6cff;
+  text-decoration: underline;
+}
+
+.content-text code {
+  font-family: 'Fira Code', 'Source Code Pro', monospace;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 0.15rem 0.3rem;
+  border-radius: 4px;
+}
+
+.content-text pre {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+  white-space: pre;
+}
+
+.content-text .katex {
+  font-size: 1.05rem;
+}
+
+.content-text .katex-display {
+  margin: 1.5rem 0;
+  overflow-x: auto;
+}
+
+.content-text .katex-display > .katex {
+  width: 100%;
+  display: inline-block;
+  text-align: center;
+}
+
 /* Animations */
 @keyframes fadeInDown {
   from {

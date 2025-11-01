@@ -1,5 +1,31 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import './App.css'
+import 'katex/dist/katex.min.css'
+import DOMPurify from 'dompurify'
+import { marked } from 'marked'
+import markedKatex from 'marked-katex-extension'
+
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+  headerIds: false,
+  mangle: false
+})
+marked.use(markedKatex({ throwOnError: false }))
+
+const normalizeMathDelimiters = (text) => {
+  if (!text) {
+    return ''
+  }
+
+  return text
+    .replace(/\\\\\[/gs, '\\[')
+    .replace(/\\\\\)/gs, '\\)')
+    .replace(/\\\\\(/gs, '\\(')
+    .replace(/\\\\\]/gs, '\\]')
+    .replace(/\\\[(.+?)\\\]/gs, (_, expr) => `\n$$\n${expr}\n$$\n`)
+    .replace(/\\\((.+?)\\\)/gs, (_, expr) => `$${expr}$`)
+}
 
 // Get API URL from environment variables or use default
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'
@@ -10,6 +36,50 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [useLocalLLM, setUseLocalLLM] = useState(false)
+  const sanitizedContent = useMemo(() => {
+    if (!response?.data) {
+      return ''
+    }
+
+    const rawText = Array.isArray(response.data)
+      ? response.data.join('\n\n')
+      : typeof response.data === 'string'
+        ? response.data
+        : JSON.stringify(response.data, null, 2)
+
+    const normalizedText = normalizeMathDelimiters(rawText)
+    const html = marked.parse(normalizedText)
+    return DOMPurify.sanitize(html, {
+      ADD_TAGS: [
+        'math',
+        'semantics',
+        'mrow',
+        'mi',
+        'mn',
+        'mo',
+        'msup',
+        'mfrac',
+        'msqrt',
+        'mtext',
+        'annotation',
+        'mtable',
+        'mtr',
+        'mtd',
+        'mlabeledtr',
+        'mfenced',
+        'mover',
+        'munder',
+        'munderover'
+      ],
+      ADD_ATTR: [
+        'mathvariant',
+        'mathsize',
+        'mathcolor',
+        'mathbackground',
+        'encoding'
+      ]
+    })
+  }, [response])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -167,7 +237,10 @@ function App() {
 
             <div className="response-content">
               <h3 className="content-label">Generated Content:</h3>
-              <div className="content-text">{response.data}</div>
+              <div
+                className="content-text"
+                dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+              />
             </div>
           </div>
         )}
