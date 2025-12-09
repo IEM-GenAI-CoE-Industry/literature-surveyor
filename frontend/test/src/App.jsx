@@ -28,15 +28,18 @@ function App() {
     setOriginalQuestion(question.trim())
 
     try {
+      const payload = {
+        question: question.trim(),
+        local_llm: useLocalLLM,
+        provider: cloudProvider // ensure provider is sent
+      }
+
       const res = await fetch(`${API_URL}/LS/content/v1/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          question: question.trim(),
-          local_llm: useLocalLLM
-        })
+        body: JSON.stringify(payload),
       })
 
       if (!res.ok) {
@@ -59,7 +62,8 @@ function App() {
     setOriginalQuestion('')
   }
 
-  const providerUsed = useLocalLLM ? 'local' : `cloud (${cloudProvider})`
+  // prefer provider from backend response if available
+  const providerUsed = response?.providerUsed ? response.providerUsed : (useLocalLLM ? 'local' : `cloud (${cloudProvider})`)
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -98,92 +102,103 @@ function App() {
         </div>
 
         <nav className="sidebar-nav">
-          <div className="nav-item active">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M15.232 5.232L13.414 7.05M11.293 9.172L9.475 10.99M7.657 13.01L5.839 14.828M3 12C3 7.029 7.029 3 12 3C16.971 3 21 7.029 21 12C21 16.971 16.971 21 12 21C7.029 21 3 16.971 3 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span>New Chat</span>
-          </div>
-          <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2"/>
-              <path d="M21 21L16.65 16.65" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-            <span>Academic Search</span>
-          </div>
-          <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-              <path d="M12 2C6.477 2 2 6.477 2 12C2 17.523 6.477 22 12 22C17.523 22 22 17.523 22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              <path d="M12 2C15.314 2 18 4.686 18 8C18 11.314 15.314 14 12 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-            <span>Science Navigator</span>
-            <svg className="nav-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M18 8A6 6 0 0 0 6 8C6 11.314 9 12 9 15M15 15H9M15 15V19M15 15L9 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span>Subscription</span>
-          </div>
-          <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M4 19.5C4 18.395 4.895 17.5 6 17.5H18C19.105 17.5 20 18.395 20 19.5V20.5C20 21.605 19.105 22.5 18 22.5H6C4.895 22.5 4 21.605 4 20.5V19.5Z" stroke="currentColor" strokeWidth="2"/>
-              <path d="M4 19.5V9.5C4 8.395 4.895 7.5 6 7.5H8" stroke="currentColor" strokeWidth="2"/>
-              <path d="M20 19.5V9.5C20 8.395 19.105 7.5 18 7.5H16" stroke="currentColor" strokeWidth="2"/>
-              <path d="M8 7.5V5.5C8 4.395 8.895 3.5 10 3.5H14C15.105 3.5 16 4.395 16 5.5V7.5" stroke="currentColor" strokeWidth="2"/>
-            </svg>
-            <span>Library</span>
-          </div>
-          <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 14L9 11H7C5.895 11 5 10.105 5 9V7C5 5.895 5.895 5 7 5H9L12 2L15 5H17C18.105 5 19 5.895 19 7V9C19 10.105 18.105 11 17 11H15L12 14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span>Scholars</span>
-          </div>
-          <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3 21H21M4 21V7L12 3L20 7V21M4 21H20M9 9V21M15 9V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span>Knowledge Base</span>
-          </div>
-          <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M14.7 6.3C15.1 5.9 15.1 5.3 14.7 4.9L13.1 3.3C12.7 2.9 12.1 2.9 11.7 3.3L10.3 4.7L13.3 7.7L14.7 6.3ZM3 17.2V21H6.8L17.8 10L14.8 7L3 17.2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span>Practice</span>
-            <svg className="nav-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M9 3V5M15 3V5M9 19V21M15 19V21M5 9H3M5 15H3M21 9H19M21 15H19M7 9H17C18.105 9 19 9.895 19 11V13C19 14.105 18.105 15 17 15H7C5.895 15 5 14.105 5 13V11C5 9.895 5.895 9 7 9Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-            <span>Uni-Lab</span>
-          </div>
-          <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3 3V21H21M7 16L12 11L16 15L21 10M21 10H16M21 10V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span>Computation</span>
-            <svg className="nav-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-              <path d="M12 6V12L16 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-            <span>History</span>
-            <svg className="nav-menu" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          </div>
-        </nav>
+  <div className="nav-item active">
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M15.232 5.232L13.414 7.05M11.293 9.172L9.475 10.99M7.657 13.01L5.839 14.828M3 12C3 7.029 7.029 3 12 3C16.971 3 21 7.029 21 12C21 16.971 16.971 21 12 21C7.029 21 3 16.971 3 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+    <span>New Chat</span>
+  </div>
+
+  <div className="nav-item">
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2"/>
+      <path d="M21 21L16.65 16.65" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+    <span>Academic Search</span>
+  </div>
+
+  <div className="nav-item">
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+      <path d="M12 2C6.477 2 2 6.477 2 12C2 17.523 6.477 22 12 22C17.523 22 22 17.523 22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M12 2C15.314 2 18 4.686 18 8C18 11.314 15.314 14 12 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+    <span>Science Navigator</span>
+    <svg className="nav-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  </div>
+
+  <div className="nav-item">
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M18 8A6 6 0 0 0 6 8C6 11.314 9 12 9 15M15 15H9M15 15V19M15 15L9 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+    <span>Subscription</span>
+  </div>
+
+  <div className="nav-item">
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 19.5C4 18.395 4.895 17.5 6 17.5H18C19.105 17.5 20 18.395 20 19.5V20.5C20 21.605 19.105 22.5 18 22.5H6C4.895 22.5 4 21.605 4 20.5V19.5Z" stroke="currentColor" strokeWidth="2"/>
+      <path d="M4 19.5V9.5C4 8.395 4.895 7.5 6 7.5H8" stroke="currentColor" strokeWidth="2"/>
+      <path d="M20 19.5V9.5C20 8.395 19.105 7.5 18 7.5H16" stroke="currentColor" strokeWidth="2"/>
+      <path d="M8 7.5V5.5C8 4.395 8.895 3.5 10 3.5H14C15.105 3.5 16 4.395 16 5.5V7.5" stroke="currentColor" strokeWidth="2"/>
+    </svg>
+    <span>Library</span>
+  </div>
+
+  <div className="nav-item">
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 14L9 11H7C5.895 11 5 10.105 5 9V7C5 5.895 5.895 5 7 5H9L12 2L15 5H17C18.105 5 19 5.895 19 7V9C19 10.105 18.105 11 17 11H15L12 14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+    <span>Scholars</span>
+  </div>
+
+  <div className="nav-item">
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 21H21M4 21V7L12 3L20 7V21M4 21H20M9 9V21M15 9V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+    <span>Knowledge Base</span>
+  </div>
+
+  <div className="nav-item">
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M14.7 6.3C15.1 5.9 15.1 5.3 14.7 4.9L13.1 3.3C12.7 2.9 12.1 2.9 11.7 3.3L10.3 4.7L13.3 7.7L14.7 6.3ZM3 17.2V21H6.8L17.8 10L14.8 7L3 17.2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+    <span>Practice</span>
+    <svg className="nav-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  </div>
+
+  <div className="nav-item">
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M9 3V5M15 3V5M9 19V21M15 19V21M5 9H3M5 15H3M21 9H19M21 15H19M7 9H17C18.105 9 19 9.895 19 11V13C19 14.105 18.105 15 17 15H7C5.895 15 5 14.105 5 13V11C5 9.895 5.895 9 7 9Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+    <span>Uni-Lab</span>
+  </div>
+
+  <div className="nav-item">
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 3V21H21M7 16L12 11L16 15L21 10M21 10H16M21 10V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+    <span>Computation</span>
+    <svg className="nav-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  </div>
+
+  <div className="nav-item">
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+      <path d="M12 6V12L16 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+    <span>History</span>
+    <svg className="nav-menu" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  </div>
+</nav>
+
 
         <div className="sidebar-footer">
           <div className="language-selector">
@@ -345,12 +360,12 @@ function App() {
               </span>
             </div>
             <div className="answer-body">
-              <div className="answer-content">{response.data}</div>
+              <div className="answer-content">{response.answer || response.data}</div>
             </div>
             <div className="answer-footer">
               <div className="answer-meta">
                 <p className="original-question-label">Original Question:</p>
-                <p className="original-question-text">{originalQuestion}</p>
+                <p className="original-question-text">{response.originalQuestion || originalQuestion}</p>
               </div>
               <div className="coming-soon">
                 <p className="coming-soon-text">Planned: sources & semantic context (coming soon)</p>
