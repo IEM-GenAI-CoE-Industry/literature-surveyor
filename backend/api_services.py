@@ -27,7 +27,7 @@ async def generate_content(request: GenerateContentRequest) -> GenerateContentRe
         summary = generate_summary(text=request.question, local_llm=request.local_llm)
 
         return GenerateContentResponse(
-            # status="success", message="Content generated successfully", data=summary
+            # status="success", message="Content generated successfully", data=summaryy
              originalQuestion=request.question,
              providerUsed=provider,
              usedLocalLLM=request.local_llm,
