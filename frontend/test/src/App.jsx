@@ -1,3 +1,7 @@
+import ReactMarkdown from 'react-markdown'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
 import { useState, useEffect } from 'react'
 import './App.css'
 
@@ -360,8 +364,15 @@ function App() {
               </span>
             </div>
             <div className="answer-body">
-              <div className="answer-content">{response.answer || response.data}</div>
-            </div>
+  <div className="answer-content">
+    <ReactMarkdown
+      remarkPlugins={[remarkMath]}
+      rehypePlugins={[rehypeKatex]}
+    >
+      {response.answer || response.data}
+    </ReactMarkdown>
+  </div>
+</div>
             <div className="answer-footer">
               <div className="answer-meta">
                 <p className="original-question-label">Original Question:</p>
