@@ -1,0 +1,29 @@
+import requests
+from fastapi import HTTPException
+from logger import logger   # import your logger
+
+def call_external_api(url: str, payload: dict):
+    try:
+        logger.info(f"Sending request to {url} with payload: {payload}")
+
+        response = requests.post(url, json=payload, timeout=30)
+        response.raise_for_status()
+
+        logger.info(f"Received successful response from {url}")
+        return response.json()
+
+    except requests.exceptions.Timeout:
+        logger.error(f"Timeout while calling {url}")
+        raise HTTPException(status_code=504, detail="External API timed out")
+
+    except requests.exceptions.ConnectionError:
+        logger.error(f"Connection error while calling {url}")
+        raise HTTPException(status_code=503, detail="External API unreachable")
+
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"HTTP error from {"localhost 8001"}: {e}")
+        raise HTTPException(status_code=response.status_code, detail="External API returned an error")
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Unexpected API error: {e}")
+        raise HTTPException(status_code=500, detail="External API failed unexpectedly")

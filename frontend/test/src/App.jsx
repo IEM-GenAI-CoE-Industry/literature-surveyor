@@ -1,5 +1,32 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import './App.css'
+
+// --- 1. Imports for Math & Markdown Formatting ---
+import 'katex/dist/katex.min.css'
+import DOMPurify from 'dompurify'
+import { marked } from 'marked'
+import markedKatex from 'marked-katex-extension'
+
+// --- 2. Configure Markdown Parser ---
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+  headerIds: false,
+  mangle: false
+})
+marked.use(markedKatex({ throwOnError: false }))
+
+// Helper to fix math delimiters for KaTeX
+const normalizeMathDelimiters = (text) => {
+  if (!text) return ''
+  return text
+    .replace(/\\\\\[/gs, '\\[')
+    .replace(/\\\\\)/gs, '\\)')
+    .replace(/\\\\\(/gs, '\\(')
+    .replace(/\\\\\]/gs, '\\]')
+    .replace(/\\\[(.+?)\\\]/gs, (_, expr) => `\n$$\n${expr}\n$$\n`)
+    .replace(/\\\((.+?)\\\)/gs, (_, expr) => `$${expr}$`)
+}
 
 // Get API URL from environment variables or use default
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'
@@ -14,217 +41,191 @@ function App() {
   const [cloudProvider, setCloudProvider] = useState('gemini') // 'gemini' or 'mistral'
   const [showCloudDropdown, setShowCloudDropdown] = useState(false)
 
+  // --- 3. Sanitize and Format Content ---
+  const sanitizedContent = useMemo(() => {
+    const content = response?.data || response?.answer
+    if (!content) return ''
+
+    const rawText = Array.isArray(content)
+      ? content.join('\n\n')
+      : typeof content === 'string'
+        ? content
+        : JSON.stringify(content, null, 2)
+
+    const normalizedText = normalizeMathDelimiters(rawText)
+    const html = marked.parse(normalizedText)
+    
+    return DOMPurify.sanitize(html, {
+      ADD_TAGS: ['math', 'semantics', 'mrow', 'mi', 'mn', 'mo', 'msup', 'mfrac', 'msqrt', 'mtext', 'annotation', 'mtable', 'mtr', 'mtd', 'mlabeledtr', 'mfenced', 'mover', 'munder', 'munderover'],
+      ADD_ATTR: ['mathvariant', 'mathsize', 'mathcolor', 'mathbackground', 'encoding']
+    })
+  }, [response])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-
     if (!question.trim()) {
       setError('Please enter a question')
       return
     }
-
-    setLoading(true)
-    setError(null)
-    setResponse(null)
-    setOriginalQuestion(question.trim())
+    setLoading(true); setError(null); setResponse(null); setOriginalQuestion(question.trim())
 
     try {
       const res = await fetch(`${API_URL}/LS/content/v1/generate`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question: question.trim(),
-          local_llm: useLocalLLM
+          local_llm: useLocalLLM,
+          provider: useLocalLLM ? undefined : cloudProvider
         })
       })
-
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`)
-      }
-
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
       const data = await res.json()
       setResponse(data)
     } catch (err) {
-      setError(err.message || 'Failed to generate content. Please make sure the backend is running.')
+      setError(err.message || 'Failed to generate content.')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleClear = () => {
-    setQuestion('')
-    setResponse(null)
-    setError(null)
-    setOriginalQuestion('')
-  }
-
+  const handleClear = () => { setQuestion(''); setResponse(null); setError(null); setOriginalQuestion('') }
   const providerUsed = useLocalLLM ? 'local' : `cloud (${cloudProvider})`
 
-  // Close dropdown when clicking outside
+  // Close dropdown logic
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (!e.target.closest('.provider-dropdown-container')) {
-        setShowCloudDropdown(false)
-      }
+      if (!e.target.closest('.provider-dropdown-container')) setShowCloudDropdown(false)
     }
-
     if (showCloudDropdown) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [showCloudDropdown])
 
-  const handleCloudProviderSelect = (provider) => {
-    setCloudProvider(provider)
-    setShowCloudDropdown(false)
-  }
+  const handleCloudProviderSelect = (provider) => { setCloudProvider(provider); setShowCloudDropdown(false) }
 
   return (
     <div className="app">
-      {/* Left Sidebar */}
+      {/* --- SIDEBAR START --- */}
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="logo">
             <div className="logo-icon-wrapper">
-              <svg className="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <svg className="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
             </div>
             <span className="logo-text">Literature Surveyor</span>
           </div>
         </div>
 
-        <nav className="sidebar-nav">
-          <div className="nav-item active">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M15.232 5.232L13.414 7.05M11.293 9.172L9.475 10.99M7.657 13.01L5.839 14.828M3 12C3 7.029 7.029 3 12 3C16.971 3 21 7.029 21 12C21 16.971 16.971 21 12 21C7.029 21 3 16.971 3 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <div className="sidebar-action-area">
+          <div className="new-chat-btn" onClick={handleClear}>
+            <svg className="new-chat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
             <span>New Chat</span>
           </div>
+        </div>
+
+        <nav className="sidebar-nav">
           <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2"/>
-              <path d="M21 21L16.65 16.65" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <circle cx="11" cy="11" r="8" strokeWidth="2"/>
+              <path strokeLinecap="round" strokeWidth="2" d="M21 21l-4.35-4.35"/>
             </svg>
             <span>Academic Search</span>
           </div>
+
           <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-              <path d="M12 2C6.477 2 2 6.477 2 12C2 17.523 6.477 22 12 22C17.523 22 22 17.523 22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              <path d="M12 2C15.314 2 18 4.686 18 8C18 11.314 15.314 14 12 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span>Science Navigator</span>
-            <svg className="nav-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg className="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
+
           <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M18 8A6 6 0 0 0 6 8C6 11.314 9 12 9 15M15 15H9M15 15V19M15 15L9 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span>Subscription</span>
-          </div>
-          <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M4 19.5C4 18.395 4.895 17.5 6 17.5H18C19.105 17.5 20 18.395 20 19.5V20.5C20 21.605 19.105 22.5 18 22.5H6C4.895 22.5 4 21.605 4 20.5V19.5Z" stroke="currentColor" strokeWidth="2"/>
-              <path d="M4 19.5V9.5C4 8.395 4.895 7.5 6 7.5H8" stroke="currentColor" strokeWidth="2"/>
-              <path d="M20 19.5V9.5C20 8.395 19.105 7.5 18 7.5H16" stroke="currentColor" strokeWidth="2"/>
-              <path d="M8 7.5V5.5C8 4.395 8.895 3.5 10 3.5H14C15.105 3.5 16 4.395 16 5.5V7.5" stroke="currentColor" strokeWidth="2"/>
-            </svg>
-            <span>Library</span>
-          </div>
-          <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 14L9 11H7C5.895 11 5 10.105 5 9V7C5 5.895 5.895 5 7 5H9L12 2L15 5H17C18.105 5 19 5.895 19 7V9C19 10.105 18.105 11 17 11H15L12 14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span>Scholars</span>
-          </div>
-          <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3 21H21M4 21V7L12 3L20 7V21M4 21H20M9 9V21M15 9V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span>Knowledge Base</span>
-          </div>
-          <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M14.7 6.3C15.1 5.9 15.1 5.3 14.7 4.9L13.1 3.3C12.7 2.9 12.1 2.9 11.7 3.3L10.3 4.7L13.3 7.7L14.7 6.3ZM3 17.2V21H6.8L17.8 10L14.8 7L3 17.2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
             </svg>
             <span>Practice</span>
-            <svg className="nav-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg className="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
+
           <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M9 3V5M15 3V5M9 19V21M15 19V21M5 9H3M5 15H3M21 9H19M21 15H19M7 9H17C18.105 9 19 9.895 19 11V13C19 14.105 18.105 15 17 15H7C5.895 15 5 14.105 5 13V11C5 9.895 5.895 9 7 9Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
             </svg>
             <span>Uni-Lab</span>
           </div>
+
           <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3 3V21H21M7 16L12 11L16 15L21 10M21 10H16M21 10V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
             <span>Computation</span>
-            <svg className="nav-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg className="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
+
           <div className="nav-item">
-            <svg className="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-              <path d="M12 6V12L16 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
+             <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+             </svg>
             <span>History</span>
-            <svg className="nav-menu" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <svg className="nav-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{width:'16px', height:'16px', marginLeft:'auto'}}>
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </div>
         </nav>
 
         <div className="sidebar-footer">
           <div className="language-selector">
-            <svg className="language-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-              <path d="M2 12H22M12 2C14.501 5.738 16 9.402 16 12C16 14.598 14.501 18.262 12 22C9.499 18.262 8 14.598 8 12C8 9.402 9.499 5.738 12 2Z" stroke="currentColor" strokeWidth="2"/>
+            <svg className="language-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+              <path strokeLinecap="round" strokeWidth="2" d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
             </svg>
-            <span>English</span>
-            <svg className="language-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <span>English (EN)</span>
+            <svg className="language-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
             </svg>
           </div>
-          <button className="login-button">Log in</button>
+          <button className="login-button">
+             Log in
+          </button>
         </div>
       </aside>
+      {/* --- SIDEBAR END --- */}
 
       {/* Main Content */}
       <main className="main-content">
-        {/* Header Section */}
         <div className="content-header">
-          <h1 className="main-title">Literature Surveyor – AI Research Assistant</h1>
-          <p className="main-subtitle">Ask any question and get AI-powered insights for your research</p>
+          <h1 className="main-title">Literature Surveyor</h1>
+          <p className="main-subtitle">Ask any question and get AI-powered insights</p>
         </div>
 
-        {/* Form Section */}
         <form onSubmit={handleSubmit} className="main-form">
           <div className="form-group">
-            <label htmlFor="question-input" className="form-label">Your Question</label>
+            <label className="form-label">Your Research Domain</label>
             <textarea
-              id="question-input"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Enter your research question here..."
+              placeholder="Enter your research domain here (e.g. AI in Agriculture)..."
               className="question-textarea"
-              rows="4"
+              rows="3"
               disabled={loading}
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">LLM Provider</label>
+            <label className="form-label">Model Provider</label>
             <div className="provider-toggle">
               <div className="provider-dropdown-container">
                 <button
@@ -237,36 +238,19 @@ function App() {
                   disabled={loading}
                 >
                   Cloud ({cloudProvider})
-                  <svg className="dropdown-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                  <svg className="dropdown-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
                 </button>
                 {showCloudDropdown && !useLocalLLM && (
                   <div className="provider-dropdown">
-                    <button
-                      type="button"
-                      className={`dropdown-option ${cloudProvider === 'gemini' ? 'selected' : ''}`}
-                      onClick={() => handleCloudProviderSelect('gemini')}
-                    >
-                      Gemini
-                    </button>
-                    <button
-                      type="button"
-                      className={`dropdown-option ${cloudProvider === 'mistral' ? 'selected' : ''}`}
-                      onClick={() => handleCloudProviderSelect('mistral')}
-                    >
-                      Mistral
-                    </button>
+                    <button type="button" className={`dropdown-option ${cloudProvider === 'gemini' ? 'selected' : ''}`} onClick={() => handleCloudProviderSelect('gemini')}>Gemini</button>
+                    <button type="button" className={`dropdown-option ${cloudProvider === 'mistral' ? 'selected' : ''}`} onClick={() => handleCloudProviderSelect('mistral')}>Mistral</button>
                   </div>
                 )}
               </div>
               <button
                 type="button"
                 className={`provider-option ${useLocalLLM ? 'active' : ''}`}
-                onClick={() => {
-                  setUseLocalLLM(true)
-                  setShowCloudDropdown(false)
-                }}
+                onClick={() => { setUseLocalLLM(true); setShowCloudDropdown(false) }}
                 disabled={loading}
               >
                 Local (Ollama)
@@ -275,85 +259,50 @@ function App() {
           </div>
 
           <div className="form-actions">
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={loading || !question.trim()}
-            >
-              {loading ? (
-                <>
-                  <span className="spinner"></span>
-                  Generating...
-                </>
-              ) : (
-                'Ask'
-              )}
+            <button type="submit" className="btn btn-primary" disabled={loading || !question.trim()}>
+              {loading ? <><span className="spinner"></span> Generating...</> : 'Generate Report'}
             </button>
-            <button
-              type="button"
-              onClick={handleClear}
-              className="btn btn-secondary"
-              disabled={loading}
-            >
-              Clear
-            </button>
+            <button type="button" onClick={handleClear} className="btn btn-secondary" disabled={loading}>Clear</button>
           </div>
         </form>
 
-        {/* Loading State */}
         {loading && (
           <div className="loading-state">
             <div className="loading-spinner-large"></div>
-            <p className="loading-text">Generating your answer...</p>
+            <p className="loading-text">Analyzing literature...</p>
           </div>
         )}
-
-        {/* Error State */}
         {error && (
           <div className="alert alert-error">
-            <svg className="alert-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-              <path d="M12 8V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              <circle cx="12" cy="16" r="1" fill="currentColor"/>
-            </svg>
             <div className="alert-content">
               <p className="alert-title">Error</p>
               <p className="alert-message">{error}</p>
             </div>
           </div>
         )}
-
-        {/* Empty State */}
         {!response && !error && !loading && (
           <div className="empty-state">
-            <svg className="empty-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg className="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             <p className="empty-text">Your answer will appear here. Ask a question to get started!</p>
           </div>
         )}
-
-        {/* Answer Display */}
         {response && !loading && (
           <div className="answer-panel">
             <div className="answer-header">
-              <h2 className="answer-title">Answer</h2>
+              <h2 className="answer-title">Research Report</h2>
             </div>
             <div className="answer-subheader">
-              <span className="provider-badge">
-                Provider: {providerUsed}
-              </span>
+              <span className="provider-badge">Provider: {providerUsed}</span>
             </div>
             <div className="answer-body">
-              <div className="answer-content">{response.data}</div>
+              <div className="answer-content content-text" dangerouslySetInnerHTML={{ __html: sanitizedContent }} />
             </div>
             <div className="answer-footer">
               <div className="answer-meta">
                 <p className="original-question-label">Original Question:</p>
                 <p className="original-question-text">{originalQuestion}</p>
-              </div>
-              <div className="coming-soon">
-                <p className="coming-soon-text">Planned: sources & semantic context (coming soon)</p>
               </div>
             </div>
           </div>
