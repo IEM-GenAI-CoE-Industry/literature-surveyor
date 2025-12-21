@@ -85,4 +85,7 @@ def generate_summary(text: str, local_llm: bool = False, provider: str | None = 
 
     except Exception as e:
         logger.exception("Error calling LLM: %s", e)
+
         return {"provider": provider or os.getenv("llm_provider", "unknown"), "answer": f"Error invoking LLM: {e}"}
+
+        
