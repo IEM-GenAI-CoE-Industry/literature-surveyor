@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, HTTPException, status, Query
 from config import settings
-from literature.service import LiteratureService
+from backend.literature.service import LiteratureService
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
