@@ -94,6 +94,7 @@ async def generate_content(request: GenerateRequest) -> GenerateResponse:
             detail=f"Error generating content: {str(e)}",
         )
 
+print("registering /literature route")
 @api_router.get("/literature", tags=["LS API Services"])
 def literature_retrieval(
     q: str = Query(..., min_length=2, description="Search query for paper retrieval"),
