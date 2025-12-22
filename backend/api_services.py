@@ -1,12 +1,14 @@
 import logging
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Query
 from config import settings
+from literature.service import LiteratureService
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 api_router = APIRouter(tags=["LS API Services"])
+literature_service = LiteratureService()
 
 from base_requests import GenerateRequest, GenerateResponse
 from test_run import generate_summary
@@ -91,3 +93,27 @@ async def generate_content(request: GenerateRequest) -> GenerateResponse:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error generating content: {str(e)}",
         )
+
+@api_router.get("/literature", tags=["LS API Services"])
+def literature_retrieval(
+    q: str = Query(..., min_length=2, description="Search query for paper retrieval"),
+    limit: int = Query(5, ge=3, le=5, description="Number of papers to return (3–5)"),
+):
+    """
+    PHASE 4 — LITERATURE RETRIEVAL (LIMITED)
+
+    Returns:
+      {
+        "papers": [
+          {"title": "...", "summary": "...", "year": 202X},
+          ...
+        ]
+      }
+    """
+    try:
+        papers = literature_service.fetch(q, limit)
+        return {"papers": papers}
+    except Exception:
+        # Hard fallback: never fail the pipeline
+        return {"papers": literature_service.fetch("", limit)}
+
