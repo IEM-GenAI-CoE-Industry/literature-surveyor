@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import Literal
+from typing import Literal, List
 
 class GenerateRequest(BaseModel):
     """
@@ -36,3 +36,12 @@ class GenerateResponse(BaseModel):
         if not value or (isinstance(value, str) and not value.strip()):
             raise ValueError("field cannot be empty")
         return value.strip()
+
+class IdeaRequest(BaseModel):
+    query: str
+    domain: str
+    venues: List[str]
+
+
+class IdeaResponse(BaseModel):
+    topics: List[str]

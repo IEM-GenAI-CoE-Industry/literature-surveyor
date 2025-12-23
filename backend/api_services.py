@@ -3,6 +3,10 @@ from fastapi import APIRouter, HTTPException, status, Query
 from config import settings
 from backend.literature.service import LiteratureService
 
+from backend.ideas.service import IdeaGenerationService
+from util.llm_factory import get_llm
+
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -10,7 +14,10 @@ logger = logging.getLogger(__name__)
 api_router = APIRouter(tags=["LS API Services"])
 literature_service = LiteratureService()
 
-from base_requests import GenerateRequest, GenerateResponse
+idea_service = IdeaGenerationService()
+
+
+from base_requests import GenerateRequest, GenerateResponse, IdeaRequest, IdeaResponse
 from test_run import generate_summary
 
 
@@ -94,6 +101,16 @@ async def generate_content(request: GenerateRequest) -> GenerateResponse:
             detail=f"Error generating content: {str(e)}",
         )
 
+def llm_call(prompt: str) -> str:
+    return """
+1. Stability Analysis of Hybrid Dynamical Systems
+2. Control of Chaotic Oscillators Using Feedback
+3. Learning-Based Reduced Order Models for PDEs
+"""
+
+
+
+
 print("registering /literature route")
 @api_router.get("/literature", tags=["LS API Services"])
 def literature_retrieval(
@@ -117,4 +134,40 @@ def literature_retrieval(
     except Exception:
         # Hard fallback: never fail the pipeline
         return {"papers": literature_service.fetch("", limit)}
+
+
+
+#Phase 5: Idea Generation
+@api_router.post("/generate-ideas", response_model=IdeaResponse, tags=["LS API Services"])
+def generate_ideas(request: IdeaRequest):
+    """
+    PHASE 5 — AI IDEA GENERATION
+    """
+    try:
+        # ---- Phase 4 (internal use) ----
+        papers = literature_service.fetch(
+            query=request.query,
+            limit=5,
+        )
+
+        # ---- Phase 5 ----
+        llm = get_llm()
+        topics = idea_service.generate(
+            domain=request.domain,
+            venues=request.venues,
+            papers=papers,
+            llm_call=llm.generate,
+        )
+
+        return {"topics": topics}
+
+    except Exception:
+        # Hard fallback
+        return {
+            "topics": [
+                "Foundational Research Directions in " + request.domain,
+                "Methodological Advances in " + request.domain,
+                "Open Problems and Challenges in " + request.domain,
+            ]
+        }
 
