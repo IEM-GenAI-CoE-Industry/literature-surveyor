@@ -3,8 +3,7 @@ from fastapi import APIRouter, HTTPException, status, Query
 from config import settings
 from backend.literature.service import LiteratureService
 
-from backend.ideas.service import IdeaGenerationService
-from util.llm_factory import get_llm
+from backend.ideas.service import IdeaService
 
 
 # Configure logging
@@ -14,7 +13,7 @@ logger = logging.getLogger(__name__)
 api_router = APIRouter(tags=["LS API Services"])
 literature_service = LiteratureService()
 
-idea_service = IdeaGenerationService()
+idea_service = IdeaService()
 
 
 from base_requests import GenerateRequest, GenerateResponse, IdeaRequest, IdeaResponse
@@ -137,37 +136,16 @@ def literature_retrieval(
 
 
 
-#Phase 5: Idea Generation
-@api_router.post("/generate-ideas", response_model=IdeaResponse, tags=["LS API Services"])
-def generate_ideas(request: IdeaRequest):
-    """
-    PHASE 5 — AI IDEA GENERATION
-    """
-    try:
-        # ---- Phase 4 (internal use) ----
-        papers = literature_service.fetch(
-            query=request.query,
-            limit=5,
-        )
-
-        # ---- Phase 5 ----
-        llm = get_llm()
-        topics = idea_service.generate(
-            domain=request.domain,
-            venues=request.venues,
-            papers=papers,
-            llm_call=llm.generate,
-        )
-
-        return {"topics": topics}
-
-    except Exception:
-        # Hard fallback
-        return {
-            "topics": [
-                "Foundational Research Directions in " + request.domain,
-                "Methodological Advances in " + request.domain,
-                "Open Problems and Challenges in " + request.domain,
-            ]
-        }
-
+# ---------- PHASE 5 ----------
+@api_router.post(
+    "/ideas",
+    response_model=IdeaResponse,
+    tags=["LS API Services"]
+)
+def idea_generation(request: IdeaRequest):
+    ideas = idea_service.generate(
+        domain=request.domain,
+        venues=request.venues,
+        papers=request.papers,
+    )
+    return {"ideas": ideas}

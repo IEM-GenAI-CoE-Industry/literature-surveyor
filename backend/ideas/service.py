@@ -1,22 +1,41 @@
+import re
+from util.llm_factory import get_llm
 from .prompt import build_prompt
-from .parser import parse_topics
-from .fallback import fallback_topics
+from .fallback import fallback_ideas
 
+class IdeaService:
+    REQUIRED_COUNT = 5
 
-class IdeaGenerationService:
-    def generate(self, *, domain, venues, papers, llm_call):
-        prompt = build_prompt(
-            domain=domain,
-            venues=venues,
-            papers=papers,
-        )
+    def generate(self, domain: str, venues: list[str], papers: list[dict]) -> list[str]:
+        ideas: list[str] = []
 
-        raw_output = llm_call(prompt)
+        try:
+            llm = get_llm()
+            prompt = build_prompt(domain, venues, papers)
+            raw = llm(prompt)
 
-        topics = parse_topics(raw_output)
+            ideas = self._parse(raw)
 
-        # Enforce ≥ 3 ideas
-        if len(topics) < 3:
-            topics = topics + fallback_topics(domain)
+        except Exception:
+            ideas = []
 
-        return topics[:5]
+        # Enforce EXACTLY 5 ideas
+        if len(ideas) < self.REQUIRED_COUNT:
+            fillers = fallback_ideas(domain)
+            for f in fillers:
+                if len(ideas) >= self.REQUIRED_COUNT:
+                    break
+                ideas.append(f)
+
+        return ideas[:self.REQUIRED_COUNT]
+
+    def _parse(self, text: str) -> list[str]:
+        lines = text.splitlines()
+        ideas = []
+
+        for line in lines:
+            line = re.sub(r"^\d+[\).\s]+", "", line).strip()
+            if len(line) > 15:
+                ideas.append(line)
+
+        return ideas
