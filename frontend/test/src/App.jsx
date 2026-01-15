@@ -1,13 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import './App.css'
 
-// --- 1. Imports for Math & Markdown Formatting ---
 import 'katex/dist/katex.min.css'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
 
-// --- 2. Configure Markdown Parser ---
+
 marked.setOptions({
   breaks: true,
   gfm: true,
@@ -16,7 +15,6 @@ marked.setOptions({
 })
 marked.use(markedKatex({ throwOnError: false }))
 
-// Helper to fix math delimiters for KaTeX
 const normalizeMathDelimiters = (text) => {
   if (!text) return ''
   return text
@@ -28,7 +26,6 @@ const normalizeMathDelimiters = (text) => {
     .replace(/\\\((.+?)\\\)/gs, (_, expr) => `$${expr}$`)
 }
 
-// Get API URL from environment variables or use default
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'
 
 function App() {
@@ -41,7 +38,7 @@ function App() {
   const [cloudProvider, setCloudProvider] = useState('gemini') // 'gemini' or 'mistral'
   const [showCloudDropdown, setShowCloudDropdown] = useState(false)
 
-  // --- 3. Sanitize and Format Content ---
+
   const sanitizedContent = useMemo(() => {
     const content = response?.data || response?.answer
     if (!content) return ''

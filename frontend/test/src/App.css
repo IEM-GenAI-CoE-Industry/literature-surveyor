@@ -142,7 +142,6 @@
 /* Sidebar Footer */
 .sidebar-footer {
   padding: 16px;
-  /* background: #f0f2f9; */
   display: flex;
   flex-direction: column;
   gap: 16px;
