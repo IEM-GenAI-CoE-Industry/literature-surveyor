@@ -12,8 +12,9 @@ class IdeaService:
         try:
             llm = get_llm()
             prompt = build_prompt(domain, venues, papers)
-            raw = llm(prompt)
+            raw = llm.invoke(prompt)
 
+            text = raw.content if hasattr(raw, "content") else str(raw)
             ideas = self._parse(raw)
 
         except Exception:

@@ -4,6 +4,7 @@ from config import settings
 from backend.literature.service import LiteratureService
 
 from backend.ideas.service import IdeaService
+from quality_filter.relevance_filter import quality_filter
 
 
 # Configure logging
@@ -143,9 +144,22 @@ def literature_retrieval(
     tags=["LS API Services"]
 )
 def idea_generation(request: IdeaRequest):
-    ideas = idea_service.generate(
+
+    # -------- PHASE 4.5: QUALITY CONTROL --------
+    filtered = quality_filter(
         domain=request.domain,
         venues=request.venues,
         papers=request.papers,
     )
+
+    filtered_venues = filtered["filtered_venues"]
+    filtered_papers = filtered["filtered_papers"]
+
+    # -------- PHASE 5: IDEA GENERATION --------
+    ideas = idea_service.generate(
+        domain=request.domain,
+        venues=filtered_venues,
+        papers=filtered_papers,
+    )
+
     return {"ideas": ideas}
