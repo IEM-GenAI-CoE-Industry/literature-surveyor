@@ -1,6 +1,10 @@
 import logging
 from fastapi import APIRouter, HTTPException, status
 from config import settings
+from backend.literature.service import LiteratureService
+
+from backend.ideas.service import IdeaService
+from quality_filter.relevance_filter import quality_filter
 
 # --- IMPORT VENUE DISCOVERY SERVICE ---
 from venue_discovery.service import discover_venues
@@ -102,3 +106,67 @@ async def generate_content(request: GenerateRequest) -> GenerateResponse:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error generating content: {str(e)}",
         )
+        )
+
+def llm_call(prompt: str) -> str:
+    return """
+1. Stability Analysis of Hybrid Dynamical Systems
+2. Control of Chaotic Oscillators Using Feedback
+3. Learning-Based Reduced Order Models for PDEs
+"""
+
+
+
+
+print("registering /literature route")
+@api_router.get("/literature", tags=["LS API Services"])
+def literature_retrieval(
+    q: str = Query(..., min_length=2, description="Search query for paper retrieval"),
+    limit: int = Query(5, ge=3, le=5, description="Number of papers to return (3–5)"),
+):
+    """
+    PHASE 4 — LITERATURE RETRIEVAL (LIMITED)
+
+    Returns:
+      {
+        "papers": [
+          {"title": "...", "summary": "...", "year": 202X},
+          ...
+        ]
+      }
+    """
+    try:
+        papers = literature_service.fetch(q, limit)
+        return {"papers": papers}
+    except Exception:
+        # Hard fallback: never fail the pipeline
+        return {"papers": literature_service.fetch("", limit)}
+
+
+
+# ---------- PHASE 5 ----------
+@api_router.post(
+    "/ideas",
+    response_model=IdeaResponse,
+    tags=["LS API Services"]
+)
+def idea_generation(request: IdeaRequest):
+
+    # -------- PHASE 4.5: QUALITY CONTROL --------
+    filtered = quality_filter(
+        domain=request.domain,
+        venues=request.venues,
+        papers=request.papers,
+    )
+
+    filtered_venues = filtered["filtered_venues"]
+    filtered_papers = filtered["filtered_papers"]
+
+    # -------- PHASE 5: IDEA GENERATION --------
+    ideas = idea_service.generate(
+        domain=request.domain,
+        venues=filtered_venues,
+        papers=filtered_papers,
+    )
+
+    return {"ideas": ideas}
