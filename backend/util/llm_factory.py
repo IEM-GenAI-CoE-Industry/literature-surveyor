@@ -120,7 +120,7 @@ def get_llm(local_llm: bool = False, provider: Optional[str] = None, temperature
         if ChatGoogleGenerativeAI is None:
             raise ValueError("Google Generative AI wrapper (langchain_google_genai) is not installed.")
         # Gemini often requires transport selection; use REST by default like earlier code
-        return ChatGoogleGenerativeAI(api_key=api_key, model=model_name, temperature=temperature, transport="rest")
+        return ChatGoogleGenerativeAI(api_key=api_key, model=model_name, temperature=temperature, transport="rest", max_output_tokens=1024)
 
     if chosen == "groq":
         if ChatGroq is None:

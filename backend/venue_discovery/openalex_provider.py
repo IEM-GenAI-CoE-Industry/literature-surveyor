@@ -30,7 +30,7 @@ def search_venues_openalex(domain: str):
     # 2. Prepare Parameters
     params = {
         "search": domain,
-        "per_page": 25, # Fetch 25 impactful papers to get a good mix of venues
+        "per_page": 60, # Fetch 60 impactful papers to get a good mix of venues
         "sort": "cited_by_count:desc" # Sort by impact to get top-tier venues
     }
     

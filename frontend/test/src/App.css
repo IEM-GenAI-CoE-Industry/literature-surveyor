@@ -189,6 +189,40 @@
   background: #2563eb;
 }
 
+/* History list in sidebar */
+.history-list {
+  padding: 8px 12px 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.history-item {
+  background: #ffffff;
+  border: 1px solid #e6eef8;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.08s;
+}
+.history-item:hover { background: #f8fafc; transform: translateY(-1px); }
+.history-query { font-size: 13px; color: #0f172a; font-weight: 600; margin-bottom: 6px; }
+.history-meta { display: flex; flex-direction: column; gap: 4px; }
+.history-date { font-size: 11px; color: #6b7280; }
+.history-preview { font-size: 12px; color: #475569; }
+.history-empty { padding: 8px 12px; color: #6b7280; font-size: 13px; }
+
+.history-actions { padding: 8px 12px; display: flex; justify-content: flex-end; }
+.clear-history-btn {
+  padding: 6px 10px;
+  background: #f8fafc;
+  border: 1px solid #e6eef8;
+  color: #0f172a;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.clear-history-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* --- MAIN CONTENT & FORM STYLES --- */
 .main-content {
   flex: 1;
@@ -617,4 +651,32 @@
   .main-content { margin-left: 0; padding: 24px; }
   .main-title { font-size: 24px; }
   .main-form { padding: 20px; }
+}
+
+/* Dashboard card styles */
+.dashboard { max-width: 1200px; margin: 0 auto; }
+.dashboard-grid { display: grid; grid-template-columns: 1fr 360px; grid-template-rows: auto auto; gap: 20px; }
+.overview-card { grid-column: 1 / -1; padding: 20px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; }
+.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; }
+.card-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: #111827; }
+.card-overview { color: #374151; font-size: 15px; line-height: 1.6; }
+.overview-list { margin-top: 8px; padding-left: 18px; color: #374151; }
+.overview-list li { margin-bottom: 8px; }
+.venues-columns { display: flex; gap: 16px; }
+.venues-columns ul { margin-left: 16px; }
+.ideas-card ul { list-style: disc; padding-left: 20px; }
+.papers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.paper-card { padding: 12px; border-radius: 8px; background: #f8fafc; border: 1px solid #e6eef8; display: flex; flex-direction: column; gap: 8px; }
+.paper-title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
+.paper-summary { font-size: 13px; color: #334155; margin: 0; line-height: 1.4; max-height: 6.2em; overflow: hidden; }
+.paper-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; }
+.scholar-link { font-size: 13px; color: #2563eb; text-decoration: none; }
+.scholar-link:hover { text-decoration: underline; }
+.citation-badge { background: #fff7ed; color: #a16207; padding: 4px 8px; border-radius: 999px; font-weight: 700; font-size: 12px; }
+
+/* Overview card (full width behavior when placed outside grid) */
+.overview-card.card { margin-top: 18px; grid-column: 1 / -1; padding: 20px; }
+
+@media (max-width: 900px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
 }
