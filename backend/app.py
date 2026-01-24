@@ -10,21 +10,12 @@ from typing import Any
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+import logging
 
-# Import your custom modules
-# We use try/except to ensure the app doesn't crash if config is slightly different,
-# but normally this will import your existing files.
-try:
-    from api_services import api_router
-    from config import settings
-except ImportError:
-    # Fallback/Placeholder if specific config files are missing in this context
-    from fastapi import APIRouter
-    api_router = APIRouter()
-    class Settings:
-        PROJECT_NAME = "Literature Surveyor"
-        API_V1_STR = "/LS/content/v1"
-    settings = Settings()
+# Import your custom modules directly. If these imports fail the traceback will
+# be shown and the process will exit so the root cause is visible (no silent fallback).
+from api_services import api_router
+from config import settings
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -33,6 +24,10 @@ app = FastAPI(
     ],
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
 )
+
+# Simple logger to surface route registration at startup
+logger = logging.getLogger("backend_app")
+
 
 # --- PERMANENT CORS FIX ---
 # Instead of listing specific ports (like ["http://localhost:5175"]), 
@@ -65,8 +60,32 @@ def index(request: Request) -> Any:
     )
     return HTMLResponse(content=body)
 
+
+@root_router.get("/health")
+def health() -> Any:
+    """Simple health-check for automated checks and frontend readiness probes."""
+    return {"status": "ok"}
+
 app.include_router(api_router, prefix=settings.API_V1_STR)
 app.include_router(root_router)
+
+
+@app.on_event("startup")
+async def _log_registered_routes():
+    # Print registered routes to help diagnose 404s when api_router failed to import
+    try:
+        registered = [r.path for r in app.routes]
+        logger.info(f"Registered routes: {registered}")
+        print("Registered routes:", registered)
+
+        # Check whether any route exists under the API prefix
+        api_prefixed = [p for p in registered if p.startswith(settings.API_V1_STR)]
+        if not api_prefixed:
+            logger.warning(f"No routes found under prefix {settings.API_V1_STR}. This often happens when api_services failed to import. Check the server log for ImportError trace.")
+            print(f"WARNING: No routes found under prefix {settings.API_V1_STR}. api_services may have failed to import.")
+    except Exception:
+        # Avoid failing startup just for logging
+        pass
 
 if __name__ == "__main__":
     import uvicorn

@@ -65,3 +65,30 @@ class SemanticScholarProvider:
             out.append({"title": title, "summary": summary, "year": year_int})
 
         return out
+
+    def get_citation_count(self, title: str) -> int | None:
+        """Best-effort: query Semantic Scholar for a single-paper citationCount by title.
+
+        Returns int citationCount or None if not available.
+        """
+        if not title or not title.strip():
+            return None
+
+        params = {"query": title.strip(), "limit": 1, "fields": "title,citationCount"}
+        headers = {"User-Agent": "literature-surveyor/phase4"}
+        api_key = os.getenv("SEMANTIC_SCHOLAR_API_KEY")
+        if api_key:
+            headers["x-api-key"] = api_key
+
+        try:
+            resp = requests.get(self.BASE_URL, params=params, headers=headers, timeout=self.timeout_s)
+            resp.raise_for_status()
+            payload = resp.json()
+            first = (payload.get("data") or [])[:1]
+            if not first:
+                return None
+            item = first[0]
+            cit = item.get("citationCount")
+            return int(cit) if cit is not None else None
+        except Exception:
+            return None
