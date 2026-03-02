@@ -15,7 +15,7 @@ class IdeaService:
             raw = llm.invoke(prompt)
 
             text = raw.content if hasattr(raw, "content") else str(raw)
-            ideas = self._parse(raw)
+            ideas = self._parse(text)
 
         except Exception:
             ideas = []
