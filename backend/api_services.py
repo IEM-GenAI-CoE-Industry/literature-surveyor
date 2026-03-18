@@ -123,7 +123,17 @@ async def generate_content(request: GenerateRequest) -> GenerateResponse:
 
     # Phase 5: idea generation
         try:
-            ideas = idea_service.generate(domain=domain, venues=list(dict.fromkeys(conferences + journals)), papers=papers) or []
+            #ideas = idea_service.generate(domain=domain, venues=list(dict.fromkeys(conferences + journals)), papers=papers) or []
+            ideas_result = idea_service.generate(
+                domain=domain,
+                venues=list(dict.fromkeys(conferences + journals)),
+                papers=papers
+            ) or {}
+
+            ideas = ideas_result.get("ideas", [])
+            warning = ideas_result.get("warning")
+            # 
+            #        
         except Exception:
             logger.exception("Idea generation failed; using fallback")
             try:
@@ -132,11 +142,20 @@ async def generate_content(request: GenerateRequest) -> GenerateResponse:
                 ideas = []
 
         # Ensure exactly 5 ideas and format as numbered list '1. Idea'
-        ideas_list = (ideas or [])[:5]
+        #ideas_list = (ideas or [])[:5]
+        ideas_list = ideas[:5]
+        
+        #
+
         while len(ideas_list) < 5:
             ideas_list.append("(no idea generated)")
         ideas_lines = [f"{i}. {' '.join(str(ideas_list[i-1]).split())}" for i in range(1, 6)]
         ideas_text = "\n".join(ideas_lines)
+        #
+        if warning:
+            ideas_text += f"\n\n{warning}"
+        #
+
 
         # Phase 6: overview (single, short sentence under 30 words requested of the LLM)
         overview_prompt = f"Write a single, short sentence under 30 words summarizing the domain, discovered venues, and example papers for '{domain}'."
@@ -195,15 +214,24 @@ async def generate_content(request: GenerateRequest) -> GenerateResponse:
             f"Overview:\n"
             f"{overview_text}"
         )
-
+        """
         structured = {
             "domain": domain,
             "overview": overview_text,
             "venues": {"conferences": conferences[:5], "journals": journals[:5]},
             "papers": papers_struct,
             "ideas": ideas_list[:5],
+        }"""
+        #
+        structured = {
+            "domain": domain,
+            "overview": overview_text,
+            "venues": {"conferences": conferences[:5], "journals": journals[:5]},
+            "papers": papers_struct,
+            "ideas": ideas_list[:5],
+            "idea_warning": warning,
         }
-
+        #
         response = GenerateResponse(
             originalQuestion=request.question,
             providerUsed=str(getattr(request, "provider", "unknown")),
@@ -266,6 +294,7 @@ def idea_generation(request: IdeaRequest):
     filtered_papers = filtered["filtered_papers"]
 
     # -------- PHASE 5: IDEA GENERATION --------
+    """
     ideas = idea_service.generate(
         domain=request.domain,
         venues=filtered_venues,
@@ -273,5 +302,16 @@ def idea_generation(request: IdeaRequest):
     )
 
     return {"ideas": ideas}
+
+    """
+    #
+    result = idea_service.generate(
+        domain=request.domain,
+        venues=filtered_venues,
+        papers=filtered_papers,
+    )
+
+    return result
+    #
 # ...existing code...
 # ...existing code...
